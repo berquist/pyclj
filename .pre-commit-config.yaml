@@ -16,10 +16,10 @@ repos:
     rev: "5.10.1"
     hooks:
       - id: isort
-  # - repo: https://github.com/psf/black
-  #   rev: "22.8.0"
-  #   hooks:
-  #     - id: black
+  - repo: https://github.com/psf/black
+    rev: "22.8.0"
+    hooks:
+      - id: black
   # - repo: https://github.com/PyCQA/flake8
   #   rev: "5.0.4"
   #   hooks:
@@ -37,15 +37,3 @@ repos:
           - types-pytz
           - types-setuptools
         args: []
-  # - repo: https://github.com/adrienverge/yamllint
-  #   rev: "v1.28.0"
-  #   hooks:
-  #     - id: yamllint
-  # - repo: https://github.com/ansible-community/ansible-lint
-  #   rev: "v6.6.0"
-  #   hooks:
-  #     - id: ansible-lint
-  # - repo: https://github.com/python-jsonschema/check-jsonschema
-  #   rev: "0.18.3"
-  #   hooks:
-  #     - id: check-github-workflows

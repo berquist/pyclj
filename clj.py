@@ -58,7 +58,7 @@ import pytz
 
 
 def number(v: str) -> Union[decimal.Decimal, int, float]:
-    if v.endswith('M'):
+    if v.endswith("M"):
         out = decimal.Decimal(v[:-1])
     else:
         try:
@@ -67,10 +67,12 @@ def number(v: str) -> Union[decimal.Decimal, int, float]:
             out = float(v)  # type: ignore
     return out
 
+
 _STOP_CHARS = [" ", ",", "\n", "\r", "\t"]
 _COLL_OPEN_CHARS = ["#", "[", "{", "("]
 _COLL_CLOSE_CHARS = ["]", "}", ")"]
 _EXTRA_NUM_CHARS = ["-", "+", ".", "e", "E", "M"]
+
 
 class CljDecoder:
     def __init__(self, fd: IO):
@@ -78,7 +80,7 @@ class CljDecoder:
         self.cur_line = 1
         self.cur_pos = 1
         self.value_stack: List[Tuple[List[Any], str, str, str]] = []
-        self.terminator = None ## for collection type
+        self.terminator = None  ## for collection type
 
     def decode(self):
         while True:
@@ -96,40 +98,40 @@ class CljDecoder:
         * type name
         * a flag to indicate if it's a collection
         """
-        if c.isdigit() or c =='-':
+        if c.isdigit() or c == "-":
             return ("number", False, None)
-        elif c == 't' or c == 'f': ## true/false
+        elif c == "t" or c == "f":  ## true/false
             return ("boolean", False, None)
-        elif c == 'n': ## nil
+        elif c == "n":  ## nil
             return ("nil", False, None)
-        elif c == '\\' :
+        elif c == "\\":
             return ("char", False, None)
-        elif c == ':':
+        elif c == ":":
             return ("keyword", False, None)
         elif c == '"':
             return ("string", False, None)
-        elif c == '#':
-            if self.__read_and_back(1) == '{':
+        elif c == "#":
+            if self.__read_and_back(1) == "{":
                 return ("set", True, "}")
-            if self.__read_and_back(1) == ':':
+            if self.__read_and_back(1) == ":":
                 return ("namespaced_dict", True, "}")
-            if self.__read_and_back(4) == 'inst':
+            if self.__read_and_back(4) == "inst":
                 return ("datetime", False, None)
-            if self.__read_and_back(4) == 'uuid':
+            if self.__read_and_back(4) == "uuid":
                 return ("uuid", False, None)
-        elif c == '{':
+        elif c == "{":
             return ("dict", True, "}")
-        elif c == '(':
+        elif c == "(":
             return ("list", True, ")")
-        elif c == '[':
-            return ('list', True, "]")
+        elif c == "[":
+            return ("list", True, "]")
 
         return (None, False, None)  # type: ignore
 
     def __read_fd(self, size: int):
         if size == 1:
             c = self.fd.read(size)
-            if  c == '\n':
+            if c == "\n":
                 self.cur_pos = 0
                 self.cur_line = self.cur_line + 1
             return c
@@ -146,7 +148,7 @@ class CljDecoder:
             c = self.__read_fd(1)
 
         ## raise exception when unexpected EOF found
-        if c == '':
+        if c == "":
             raise ValueError("Unexpected EOF")
 
         t, coll, term = self.__get_type_from_char(c)
@@ -161,31 +163,37 @@ class CljDecoder:
                 self.__read_fd(1)
                 ## get namespace
                 buf = []
-                while c != '{':
+                while c != "{":
                     c = self.__read_fd(1)
                     buf.append(c)
-                namespace = ''.join(buf[:-1])
+                namespace = "".join(buf[:-1])
 
             self.terminator = term
 
             self.value_stack.append(([], self.terminator, t, namespace))
             return None
         else:
-            v = None ## token value
-            e = None ## end char
-            r = True ## the token contains data or not
+            v = None  ## token value
+            e = None  ## end char
+            r = True  ## the token contains data or not
 
             if t == "boolean":
-                if c == 't':
+                if c == "t":
                     chars = self.__read_fd(4)
-                    if chars[:3] != 'rue':
-                        raise ValueError('Expect true, got t%s at line %d, col %d' % (chars[:3], self.cur_line, self.cur_pos))
+                    if chars[:3] != "rue":
+                        raise ValueError(
+                            "Expect true, got t%s at line %d, col %d"
+                            % (chars[:3], self.cur_line, self.cur_pos)
+                        )
                     e = chars[-1]
                     v = True
                 else:
                     chars = self.__read_fd(5)
-                    if chars[:4] != 'alse':
-                        raise ValueError('Expect true, got t%s at line %d, col %d' % (chars[:3], self.cur_line, self.cur_pos))
+                    if chars[:4] != "alse":
+                        raise ValueError(
+                            "Expect true, got t%s at line %d, col %d"
+                            % (chars[:3], self.cur_line, self.cur_pos)
+                        )
                     e = chars[-1]
                     v = False
 
@@ -196,12 +204,15 @@ class CljDecoder:
                     buf.append(c)
 
                 e = c
-                v = ''.join(buf[:-1])
+                v = "".join(buf[:-1])
 
             elif t == "nil":
                 chars = self.__read_fd(3)
-                if chars[:2] != 'il':
-                    raise ValueError('Expect nil, got n%s at line %d, col %d' % (chars[:2], self.cur_line, self.cur_pos))
+                if chars[:2] != "il":
+                    raise ValueError(
+                        "Expect nil, got n%s at line %d, col %d"
+                        % (chars[:2], self.cur_line, self.cur_pos)
+                    )
                 e = chars[-1]
                 v = None
 
@@ -211,7 +222,7 @@ class CljDecoder:
                     buf.append(c)
                     c = self.__read_fd(1)
                 e = c
-                numstr = ''.join(buf)
+                numstr = "".join(buf)
                 v = number(numstr)
 
                 ## special case for
@@ -221,19 +232,19 @@ class CljDecoder:
                     _seek_back(self.fd, 1)
 
             elif t == "keyword":
-                buf = []    ##skip the leading ":"
+                buf = []  ##skip the leading ":"
                 while c is not self.terminator and c is not "" and c not in _STOP_CHARS:
                     c = self.__read_fd(1)
                     buf.append(c)
 
                 e = c
-                v = ''.join(buf[:-1])
+                v = "".join(buf[:-1])
 
             elif t == "string":
                 buf = []
-                cp = c = self.__read_fd(1) ## to check escaping character \
+                cp = c = self.__read_fd(1)  ## to check escaping character \
 
-                while not(c == '"' and cp != '\\'):
+                while not (c == '"' and cp != "\\"):
                     buf.append(c)
                     cp = c
                     c = self.__read_fd(1)
@@ -247,7 +258,7 @@ class CljDecoder:
                 ## read next value as string
                 s = self.__read_token()
                 if not isinstance(s, str):
-                    raise ValueError('Str expected, but got %s' % str(s))
+                    raise ValueError("Str expected, but got %s" % str(s))
 
                 ## remove read string from the value_stack
                 if len(self.value_stack) > 0:
@@ -262,7 +273,7 @@ class CljDecoder:
                 ## read next value as string
                 s = self.__read_token()
                 if not isinstance(s, str):
-                    raise ValueError('Str expected, but got %s' % str(s))
+                    raise ValueError("Str expected, but got %s" % str(s))
 
                 ## remove read string from the value_stack
                 if len(self.value_stack) > 0:
@@ -272,7 +283,10 @@ class CljDecoder:
 
             else:
                 if c not in _COLL_CLOSE_CHARS:
-                    raise ValueError('Unexpected char: "%s" at line %d, col %d' % (c, self.cur_line, self.cur_pos))
+                    raise ValueError(
+                        'Unexpected char: "%s" at line %d, col %d'
+                        % (c, self.cur_line, self.cur_pos)
+                    )
                 r = False
                 e = c
 
@@ -292,8 +306,12 @@ class CljDecoder:
                 elif container in ["dict", "namespaced_dict"]:
                     v = {}
                     for i in range(0, len(current_scope), 2):
-                        key = '%s/%s' % (namespace, current_scope[i]) if namespace else current_scope[i]
-                        v[key] = current_scope[i+1]
+                        key = (
+                            "%s/%s" % (namespace, current_scope[i])
+                            if namespace
+                            else current_scope[i]
+                        )
+                        v[key] = current_scope[i + 1]
                 r = True
 
             if r and len(self.value_stack) > 0:
@@ -343,7 +361,7 @@ class CljEncoder:
         if coll:
             refid = id(d)
             if refid in self.circular:
-                raise ValueError('Circular reference detected')
+                raise ValueError("Circular reference detected")
             else:
                 self.circular[refid] = True
 
@@ -377,32 +395,34 @@ class CljEncoder:
             if t == "number":
                 fd.write(str(d))
             elif t == "decimal":
-                fd.write(str(d) + 'M')
+                fd.write(str(d) + "M")
             elif t == "string":
                 s = json.encoder.py_encode_basestring_ascii(str(d))
                 fd.write(s)
             elif t == "boolean":
                 if d:
-                    fd.write('true')
+                    fd.write("true")
                 else:
-                    fd.write('false')
-            elif t == 'None':
-                fd.write('nil')
-            elif t == 'datetime':
+                    fd.write("false")
+            elif t == "None":
+                fd.write("nil")
+            elif t == "datetime":
                 if not d.tzinfo:
                     ## replace naive datetime
                     d = d.replace(tzinfo=pytz.utc)
                 s = pyrfc3339.generate(d)
-                fd.write("#inst \"%s\"" % s)
-            elif t == 'uuid':
+                fd.write('#inst "%s"' % s)
+            elif t == "uuid":
                 s = str(d)
-                fd.write("#uuid \"%s\"" % s)
+                fd.write('#uuid "%s"' % s)
             else:
                 s = json.encoder.py_encode_basestring_ascii(str(d))
                 fd.write(s)
 
+
 def dump(obj: Any, fp):
     return CljEncoder(obj, fp).encode()
+
 
 def dumps(obj: Any):
     buf = StringIO()
@@ -411,9 +431,11 @@ def dumps(obj: Any):
     buf.close()
     return result
 
+
 def load(fp):
     decoder = CljDecoder(fp)
     return decoder.decode()
+
 
 def loads(s: str):
     buf = StringIO(s)
@@ -421,18 +443,22 @@ def loads(s: str):
     buf.close()
     return result
 
+
 def _seek_back(fd: IO, size: int) -> None:
     fd.seek(fd.tell() - size, 0)
 
 
-ESCAPE_SEQUENCE_RE = re.compile(r'''
+ESCAPE_SEQUENCE_RE = re.compile(
+    r"""
     ( \\U........      # 8-digit hex escapes
     | \\u....          # 4-digit hex escapes
     | \\x..            # 2-digit hex escapes
     | \\[0-7]{1,3}     # Octal escapes
     | \\N\{[^}]+\}     # Unicode characters by name
     | \\[\\'"abfnrtv]  # Single-character escapes
-    )''', re.UNICODE | re.VERBOSE)
+    )""",
+    re.UNICODE | re.VERBOSE,
+)
 
 
 def _decode_escapes(s: str) -> str:
@@ -440,7 +466,8 @@ def _decode_escapes(s: str) -> str:
 
     Taken from https://stackoverflow.com/a/24519338
     """
+
     def decode_match(match):
-        return codecs.decode(match.group(0), 'unicode-escape')
+        return codecs.decode(match.group(0), "unicode-escape")
 
     return ESCAPE_SEQUENCE_RE.sub(decode_match, s)
