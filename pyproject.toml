@@ -1,0 +1,17 @@
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+# default is FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER
+# Placing third-party imports at the end makes their inclusion more obvious
+sections = ["FUTURE", "STDLIB", "FIRSTPARTY", "THIRDPARTY", "LOCALFOLDER"]
+
+[tool.mypy]
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+
+scripts_are_modules = true
+warn_unused_configs = true
