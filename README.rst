@@ -1,7 +1,7 @@
 pyclj
 =====
 
-A python reader/writer for clojure data literals. 
+A python reader/writer for clojure data literals.
 On clojure's extensible data notations, checkout Rich Hickey's edn spec: https://github.com/richhickey/edn
 
 Install
@@ -26,7 +26,7 @@ Clojure -> Python Type Mapping
 Clojure Python
 ======= ======
 list    list
-vector  list 
+vector  list
 set     set
 map     dict
 nil     None
@@ -37,7 +37,7 @@ boolean boolean
 char    string
 keyword string
 ======= ======
- 
+
 Python -> Clojure Type Mapping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -58,6 +58,3 @@ License
 -------
 
 pyclj is distributed under MIT license.
-
-
-
