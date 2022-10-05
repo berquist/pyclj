@@ -2,3 +2,4 @@
 dist/
 pyclj.egg-info/
 build/
+.hypothesis/

@@ -44,24 +44,25 @@
 
 __all__ = ["dump", "dumps", "load", "loads"]
 
-import os
-from cStringIO import StringIO
+from io import StringIO
 import json
-
+import codecs
+import re
 import decimal
 import uuid
 from datetime import datetime
 import pyrfc3339
 import pytz
+from typing import Any, Dict, Optional, Tuple, Union, IO
 
-def number(v):
+def number(v: str) -> Union[decimal.Decimal, int, float]:
     if v.endswith('M'):
         out = decimal.Decimal(v[:-1])
     else:
         try:
-            out = int(v)
-        except ValueError as e:
-            out = float(v)
+            out = int(v)  # type: ignore
+        except ValueError:
+            out = float(v)  # type: ignore
     return out
 
 _STOP_CHARS = [" ", ",", "\n", "\r", "\t"]
@@ -69,8 +70,8 @@ _COLL_OPEN_CHARS = ["#", "[", "{", "("]
 _COLL_CLOSE_CHARS = ["]", "}", ")"]
 _EXTRA_NUM_CHARS = ["-", "+", ".", "e", "E", "M"]
 
-class CljDecoder(object):
-    def __init__(self, fd):
+class CljDecoder:
+    def __init__(self, fd: IO):
         self.fd = fd
         self.cur_line = 1
         self.cur_pos = 1
@@ -83,15 +84,12 @@ class CljDecoder(object):
             if len(self.value_stack) == 0:
                 return v
 
-    def __seek_back(self, size):
-        self.fd.seek(self.fd.tell()-size, 0)
-
-    def __read_and_back(self, size):
+    def __read_and_back(self, size: int):
         s = self.fd.read(size)
-        self.__seek_back(size)
+        _seek_back(self.fd, size)
         return s
 
-    def __get_type_from_char(self, c):
+    def __get_type_from_char(self, c: str) -> Tuple[str, bool, Optional[str]]:
         """return a tuple of type information
         * type name
         * a flag to indicate if it's a collection
@@ -124,9 +122,9 @@ class CljDecoder(object):
         elif c == '[':
             return ('list', True, "]")
 
-        return (None, False, None)
+        return (None, False, None)  # type: ignore
 
-    def __read_fd(self, size):
+    def __read_fd(self, size: int):
         if size == 1:
             c = self.fd.read(size)
             if  c == '\n':
@@ -218,7 +216,7 @@ class CljDecoder(object):
                 ## [23[12]]
                 ## this is a valid clojure form
                 if e in _COLL_OPEN_CHARS:
-                    self.__seek_back(1)
+                    _seek_back(self.fd, 1)
 
             elif t == "keyword":
                 buf = []    ##skip the leading ":"
@@ -238,7 +236,7 @@ class CljDecoder(object):
                     cp = c
                     c = self.__read_fd(1)
                 e = c
-                v = unicode(''.join(buf).decode('unicode-escape'))
+                v = _decode_escapes("".join(buf))
 
             elif t == "datetime":
                 ## skip "inst"
@@ -246,7 +244,7 @@ class CljDecoder(object):
 
                 ## read next value as string
                 s = self.__read_token()
-                if not isinstance(s, basestring):
+                if not isinstance(s, str):
                     raise ValueError('Str expected, but got %s' % str(s))
 
                 ## remove read string from the value_stack
@@ -261,7 +259,7 @@ class CljDecoder(object):
 
                 ## read next value as string
                 s = self.__read_token()
-                if not isinstance(s, basestring):
+                if not isinstance(s, str):
                     raise ValueError('Str expected, but got %s' % str(s))
 
                 ## remove read string from the value_stack
@@ -303,29 +301,29 @@ class CljDecoder(object):
             return v
 
 
-class CljEncoder(object):
-    def __init__(self, data, fd):
+class CljEncoder:
+    def __init__(self, data, fd) -> None:
         self.data = data
         self.fd = fd
-        self.circular = {}
+        self.circular: Dict[int, bool] = {}
 
     def encode(self):
         self.__do_encode(self.data)
 
-    def get_type(self,t):
+    def get_type(self, t) -> Tuple[str, bool]:
         if t is None:
             return ("None", False)
         elif isinstance(t, str):
             return ("string", False)
         elif isinstance(t, bool):
             return ("boolean", False)
-        elif isinstance(t, (int,float,long)):
+        elif isinstance(t, (int, float)):
             return ("number", False)
         elif isinstance(t, decimal.Decimal):
             return ("decimal", False)
         elif isinstance(t, dict):
             return ("dict", True)
-        elif isinstance(t, (list,tuple)):
+        elif isinstance(t, (list, tuple)):
             return ("list", True)
         elif isinstance(t, set):
             return ("set", True)
@@ -338,7 +336,7 @@ class CljEncoder(object):
 
     def __do_encode(self, d):
         fd = self.fd
-        t,coll = self.get_type(d)
+        t, coll = self.get_type(d)
 
         if coll:
             refid = id(d)
@@ -350,12 +348,12 @@ class CljEncoder(object):
             if t == "dict":
                 fd.write("{")
                 if len(d) > 0:
-                    for k,v in d.items():
+                    for k, v in list(d.items()):
                         self.__do_encode(k)
                         fd.write(" ")
                         self.__do_encode(v)
                         fd.write(" ")
-                    fd.seek(-1, os.SEEK_CUR)
+                    _seek_back(fd, 1)
                 fd.write("}")
             elif t == "list":
                 fd.write("[")
@@ -363,7 +361,7 @@ class CljEncoder(object):
                     for v in d:
                         self.__do_encode(v)
                         fd.write(" ")
-                    fd.seek(-1, os.SEEK_CUR)
+                    _seek_back(fd, 1)
                 fd.write("]")
             elif t == "set":
                 fd.write("#{")
@@ -371,7 +369,7 @@ class CljEncoder(object):
                     for v in d:
                         self.__do_encode(v)
                         fd.write(" ")
-                    fd.seek(-1, os.SEEK_CUR)
+                    _seek_back(fd, 1)
                 fd.write("}")
         else:
             if t == "number":
@@ -379,7 +377,7 @@ class CljEncoder(object):
             elif t == "decimal":
                 fd.write(str(d) + 'M')
             elif t == "string":
-                s = json.encoder.py_encode_basestring_ascii(unicode(d))
+                s = json.encoder.py_encode_basestring_ascii(str(d))
                 fd.write(s)
             elif t == "boolean":
                 if d:
@@ -398,13 +396,13 @@ class CljEncoder(object):
                 s = str(d)
                 fd.write("#uuid \"%s\"" % s)
             else:
-                s = json.encoder.py_encode_basestring_ascii(unicode(d))
+                s = json.encoder.py_encode_basestring_ascii(str(d))
                 fd.write(s)
 
-def dump(obj, fp):
+def dump(obj: Any, fp):
     return CljEncoder(obj, fp).encode()
 
-def dumps(obj):
+def dumps(obj: Any):
     buf = StringIO()
     dump(obj, buf)
     result = buf.getvalue()
@@ -415,8 +413,32 @@ def load(fp):
     decoder = CljDecoder(fp)
     return decoder.decode()
 
-def loads(s):
+def loads(s: str):
     buf = StringIO(s)
     result = load(buf)
     buf.close()
     return result
+
+def _seek_back(fd: IO, size: int) -> None:
+    fd.seek(fd.tell() - size, 0)
+
+
+ESCAPE_SEQUENCE_RE = re.compile(r'''
+    ( \\U........      # 8-digit hex escapes
+    | \\u....          # 4-digit hex escapes
+    | \\x..            # 2-digit hex escapes
+    | \\[0-7]{1,3}     # Octal escapes
+    | \\N\{[^}]+\}     # Unicode characters by name
+    | \\[\\'"abfnrtv]  # Single-character escapes
+    )''', re.UNICODE | re.VERBOSE)
+
+
+def _decode_escapes(s: str) -> str:
+    """Safely decode escape sequences.
+
+    Taken from https://stackoverflow.com/a/24519338
+    """
+    def decode_match(match):
+        return codecs.decode(match.group(0), 'unicode-escape')
+
+    return ESCAPE_SEQUENCE_RE.sub(decode_match, s)

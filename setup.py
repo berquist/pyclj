@@ -1,12 +1,9 @@
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup
 
 long_desc=open('README.rst','r').read()
 
 setup(name="pyclj",
-      version="0.4.0",
+      version="0.5.0",
       author="Sun Ning",
       author_email="sunng@about.me",
       description="clojure literal reader and writer for python",
