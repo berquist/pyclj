@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-import unittest
-import clj
-import pytz
 import decimal
-from datetime import datetime
+import unittest
 import uuid
+from datetime import datetime
+
+import clj
+
+import pytz
+
 
 class CljLoadTest(unittest.TestCase):
     def setUp(self):

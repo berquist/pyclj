@@ -44,16 +44,18 @@
 
 __all__ = ["dump", "dumps", "load", "loads"]
 
-from io import StringIO
-import json
 import codecs
-import re
 import decimal
+import json
+import re
 import uuid
 from datetime import datetime
+from io import StringIO
+from typing import IO, Any, Dict, Optional, Tuple, Union
+
 import pyrfc3339
 import pytz
-from typing import Any, Dict, Optional, Tuple, Union, IO
+
 
 def number(v: str) -> Union[decimal.Decimal, int, float]:
     if v.endswith('M'):
