@@ -51,7 +51,7 @@ import re
 import uuid
 from datetime import datetime
 from io import StringIO
-from typing import IO, Any, Dict, Optional, Tuple, Union
+from typing import IO, Any, Dict, List, Optional, Tuple, Union
 
 import pyrfc3339
 import pytz
@@ -77,7 +77,7 @@ class CljDecoder:
         self.fd = fd
         self.cur_line = 1
         self.cur_pos = 1
-        self.value_stack = []
+        self.value_stack: List[Tuple[List[Any], str, str, str]] = []
         self.terminator = None ## for collection type
 
     def decode(self):
