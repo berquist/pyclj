@@ -1,0 +1,8 @@
+# Adapted from https://akrabat.com/ignoring-revisions-with-git-blame/
+
+# pre-commit fixers
+3fd0c45d642ea851e2f863551692398fcb43a8f1
+# isort
+950ba12736511666b5aff5b8a01202469e5c6690
+# black
+5e6cbcde636eef61ba04f8bfcf2f442efd085055
